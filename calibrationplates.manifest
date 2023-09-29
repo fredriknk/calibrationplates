@@ -1,0 +1,10 @@
+{
+	"autodeskProduct":	"Fusion360",
+	"type":	"script",
+	"author":	"Fredrik Beilegaard",
+	"description":	{
+		"":	"Make calibration bpaltes for 3d printeing"
+	},
+	"supportedOS":	"windows|mac",
+	"editEnabled":	true
+}
