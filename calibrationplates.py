@@ -29,6 +29,19 @@ def format_number(num):
 def removeZero(sepdigits):
     return f"{(sepdigits):.2f}".replace("-0","-").lstrip("0") #remove zero
 
+def extrudefunc(sketch,dist,cut,extrudes):
+    if cut:
+        extrudeInput = extrudes.createInput(sketch, adsk.fusion.FeatureOperations.CutFeatureOperation)
+        extent_distance = adsk.fusion.DistanceExtentDefinition.create(adsk.core.ValueInput.createByString(f"{dist:.2f}cm"))
+        extrudeInput.setOneSideExtent(extent_distance,adsk.fusion.ExtentDirections.NegativeExtentDirection)
+
+    else:
+        extrudeInput = extrudes.createInput(sketch, adsk.fusion.FeatureOperations.JoinFeatureOperation)
+        extent_distance = adsk.fusion.DistanceExtentDefinition.create(adsk.core.ValueInput.createByString(f"{dist:.2f}cm"))
+        extrudeInput.setOneSideExtent(extent_distance,adsk.fusion.ExtentDirections.PositiveExtentDirection)
+
+    return extrudes.add(extrudeInput)
+
 fusion = None
 def run( context ):
     try:
@@ -57,6 +70,8 @@ def run( context ):
         yincrement = 0.2*mm
 
         #Parameters
+        cutpoles = True
+        cuttext = True
         textsize = 7*mm
         textthickness = 0.5*mm
         box_thickness = 5*mm
@@ -140,16 +155,19 @@ def run( context ):
                     verticalAlignment = adsk.core.VerticalAlignments.TopVerticalAlignment
                     horizontalAlignment = adsk.core.HorizontalAlignments.RightHorizontalAlignment
                     sketchText = create_multiline_sketch_text(sketchTexts, textinput, textsize, xmin, ymin, xmax, ymax, horizontalAlignment, verticalAlignment)
-                    ext = extrudes.add(extrude(sketchText ,extrudes,textthickness))
+                    ext = extrudefunc(sketchText,textthickness,cuttext,extrudes)
                 
                 circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(xpos,ypos,0), (circlesize)/2)
                 if circlesize < maxheight:
                     extrudeheight = circlesize
                 else:
                     extrudeheight = maxheight
-
                 
-                ext = extrudes.add(extrude(sketch2.profiles.item(num_circles),extrudes,extrudeheight))
+                if cutpoles:
+                    dist = box_thickness+0.1
+                else:
+                    dist = extrudeheight
+                ext = extrudefunc(sketch2.profiles.item(num_circles),box_thickness,cuttext,extrudes)
 
                 num_circles+=1
                 ypos_last=ypos
@@ -179,7 +197,7 @@ def run( context ):
             #bbox = [sketchText_var.boundingBox.maxPoint,sketchText_var.boundingBox.minPoint]
             sketchText = sketchTexts.add(sketchText_var)
 
-            ext = extrudes.add(extrude(sketchText,extrudes,textthickness))
+            ext = extrudefunc(sketchText,textthickness,cuttext,extrudes)
             
             xpos += size+separationx
             ypos = textsize+stop/2+separationy
