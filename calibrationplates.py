@@ -61,17 +61,17 @@ def run( context ):
         ################################
         #x Increments
         start = 1*mm
-        stop = 3*mm
+        stop = 10*mm
         xincrement = 1.*mm
 
         #Y-increments
         yincrement_start = 0.0*mm
         yincrement_stop = 1.*mm
-        yincrement = 0.2*mm
+        yincrement = 0.1*mm
 
         #Parameters
         cutpoles = True
-        cuttext = True
+        cuttext = False
         textsize = 7*mm
         textthickness = 0.5*mm
         box_thickness = 5*mm
