@@ -30,16 +30,8 @@ def removeZero(sepdigits):
     return f"{(sepdigits):.2f}".replace("-0","-").lstrip("0") #remove zero
 
 def extrudefunc(sketch,dist,cut,extrudes):
-    if cut:
-        extrudeInput = extrudes.createInput(sketch, adsk.fusion.FeatureOperations.CutFeatureOperation)
-        extent_distance = adsk.fusion.DistanceExtentDefinition.create(adsk.core.ValueInput.createByString(f"{dist:.2f}cm"))
-        extrudeInput.setOneSideExtent(extent_distance,adsk.fusion.ExtentDirections.NegativeExtentDirection)
-
-    else:
-        extrudeInput = extrudes.createInput(sketch, adsk.fusion.FeatureOperations.JoinFeatureOperation)
-        extent_distance = adsk.fusion.DistanceExtentDefinition.create(adsk.core.ValueInput.createByString(f"{dist:.2f}cm"))
-        extrudeInput.setOneSideExtent(extent_distance,adsk.fusion.ExtentDirections.PositiveExtentDirection)
-
+    extrudeInput=extrude(sketch,extrudes,dist)
+        
     return extrudes.add(extrudeInput)
 
 fusion = None
@@ -50,13 +42,20 @@ def run( context ):
         global fusion
         fusion = adsk.core.Application.get( )
         design = adsk.fusion.Design.cast( fusion.activeProduct )
-        objColl = adsk.core.ObjectCollection.create()
+        fusion.activeProduct.designType = adsk.fusion.DesignTypes.DirectDesignType
+
         components = design.rootComponent.occurrences
         component = components.addNewComponent( adsk.core.Matrix3D.create( ) ).component
+        
+        root = component
         extrudes = component.features.extrudeFeatures # outward extrudes (text etc)
         sketch1 = component.sketches.add( component.xYConstructionPlane )
         # Get the SketchCircles collection from an existing sketch.
-        
+        brep = adsk.fusion.TemporaryBRepManager.get()
+        # Get bodies in root component
+        bodies = root.bRepBodies
+        poleCollection = adsk.core.ObjectCollection.create()
+
         mm = 0.1
         ################################
         #x Increments
@@ -70,8 +69,9 @@ def run( context ):
         yincrement = 0.1*mm
 
         #Parameters
-        cutpoles = True
-        cuttext = False
+        cutpoles = "hole"
+        #cutpoles = "pole"
+        cuttext = True
         textsize = 7*mm
         textthickness = 0.5*mm
         box_thickness = 5*mm
@@ -129,8 +129,26 @@ def run( context ):
         # Get the SketchLines collection from an existing sketch.S
         lines = sketch1.sketchCurves.sketchLines
         # Call an add method on the collection to create a new line.
-        axis = lines.addTwoPointRectangle(adsk.core.Point3D.create(xdimneg,ydimneg,0), adsk.core.Point3D.create(xpos+size/2+textsize,ypos_last+size/2+textsize,0))
-        ext = extrudes.add(extrude(sketch1.profiles.item(0),extrudes,-box_thickness))
+        xlength = -xdimneg+xpos+size/2+textsize
+        ylength = -ydimneg+ypos_last+size/2+textsize
+        centerpointx = xlength/2+xdimneg
+        centerpointy = ylength/2+ydimneg
+        centerpointz = -box_thickness/2
+
+        centerPoint = adsk.core.Point3D.create(centerpointx,centerpointy,centerpointz)
+        lengthDir = adsk.core.Vector3D.create(1.0, 0.0, 0.0)
+        widthDir = adsk.core.Vector3D.create(0.0, 1.0, 0.0)
+        orientedBoundingBox3D = adsk.core.OrientedBoundingBox3D.create(centerPoint, 
+                                                                   lengthDir,
+                                                                   widthDir,
+                                                                   xlength,
+                                                                   ylength,
+                                                                   box_thickness
+                                                                   )
+        box = brep.createBox(orientedBoundingBox3D)
+        bodies.add(box)
+        #axis = lines.addTwoPointRectangle(adsk.core.Point3D.create(xdimneg,ydimneg,0), adsk.core.Point3D.create(xpos+size/2+textsize,ypos_last+size/2+textsize,0))
+        #ext = extrudes.add(extrude(sketch1.profiles.item(0),extrudes,-box_thickness))
         # Create the extrusion
         
 
@@ -157,18 +175,23 @@ def run( context ):
                     sketchText = create_multiline_sketch_text(sketchTexts, textinput, textsize, xmin, ymin, xmax, ymax, horizontalAlignment, verticalAlignment)
                     ext = extrudefunc(sketchText,textthickness,cuttext,extrudes)
                 
-                circle1 = circles.addByCenterRadius(adsk.core.Point3D.create(xpos,ypos,0), (circlesize)/2)
                 if circlesize < maxheight:
                     extrudeheight = circlesize
                 else:
                     extrudeheight = maxheight
                 
-                if cutpoles:
-                    dist = box_thickness+0.1
+                if cutpoles=="hole":
+                    dist = -box_thickness-0.1
                 else:
                     dist = extrudeheight
-                ext = extrudefunc(sketch2.profiles.item(num_circles),box_thickness,cuttext,extrudes)
-
+                    
+                cylinder = brep.createCylinderOrCone(
+                adsk.core.Point3D.create(xpos, ypos, 0),
+                (circlesize)/2,
+                adsk.core.Point3D.create(xpos, ypos, dist),
+                (circlesize)/2)
+                bodies.add(cylinder)
+                poleCollection.add(bodies.item(len(bodies)-1))
                 num_circles+=1
                 ypos_last=ypos
 
@@ -202,6 +225,29 @@ def run( context ):
             xpos += size+separationx
             ypos = textsize+stop/2+separationy
 
+        fusion.userInterface.messageBox( str(len(bodies))+" rb:"+str(len(poleCollection)))
+        target = bodies.item(0)
+        if cutpoles =="hole":
+            operation = 1 #cut
+        else:
+            operation = 0 # join
+        combineFeatures = root.features.combineFeatures
+        combineFeatureInput = combineFeatures.createInput(target, poleCollection)
+        combineFeatureInput.operation = operation
+        combineFeatureInput.isKeepToolBodies = False
+        combineFeatureInput.isNewComponent = False
+        returnValue = combineFeatures.add(combineFeatureInput)
+
+        bodyCollection = adsk.core.ObjectCollection.create()
+        for body in bodies:
+            if body != target:
+                bodyCollection.add(body)
+        combineFeatures = root.features.combineFeatures
+        combineFeatureInput = combineFeatures.createInput(target, bodyCollection)
+        combineFeatureInput.operation = 0
+        combineFeatureInput.isKeepToolBodies = False
+        combineFeatureInput.isNewComponent = False
+        returnValue = combineFeatures.add(combineFeatureInput)
 
 
     except:
