@@ -59,14 +59,14 @@ def run( context ):
         mm = 0.1
         ################################
         #x Increments
-        start = 1*mm
-        stop = 10*mm
+        start = 27.*mm
+        stop = 30.*mm
         xincrement = 1.*mm
 
         #Y-increments
         yincrement_start = 0.0*mm
         yincrement_stop = 1.*mm
-        yincrement = 0.1*mm
+        yincrement = 0.2*mm
 
         #Parameters
         cutpoles = "hole"
@@ -74,7 +74,7 @@ def run( context ):
         cuttext = True
         textsize = 7*mm
         textthickness = 0.5*mm
-        box_thickness = 5*mm
+        box_thickness = 15*mm
         separationx = 5*mm
         separationy = 2*mm
         maxheight = 10*mm
@@ -88,7 +88,7 @@ def run( context ):
         ypos_last=0
         
         yincrements = int((yincrement_stop-yincrement_start)/yincrement)
-        xincrements = int((stop-start)/xincrement)
+        xincrements = int(round((stop-start)/xincrement))
 
         sketch2 = component.sketches.add( component.xYConstructionPlane )
         circles = sketch2.sketchCurves.sketchCircles
@@ -103,23 +103,22 @@ def run( context ):
         xpos = stop/2+separationx
         num_circles = 0
         firstrun = True
-
+        next_size = 0
         for xinc in range(0,xincrements+1):
             size = start+ xincrement*xinc
 
             for inc in range(0,yincrements+1):
                 circlesize = size+inc*yincrement+yincrement_start
-                if circlesize < maxheight:
-                    extrudeheight = circlesize
-                else:
-                    extrudeheight = maxheight
+
                 num_circles+=1
                 ypos_last=ypos
-
-                if stop+separationy > textsize+separationy:
-                    ypos += stop+separationy
+                last_size = next_size
+                next_size = stop+(inc+1)*yincrement+yincrement_start+separationy-yincrement*0.5
+                if next_size > textsize+separationy:
+                    ypos += next_size
                 else:
                     ypos += textsize+separationy
+            
             xpos += size+separationx
             ypos = textsize+stop/2+separationy
         xpos -= size+separationx
@@ -129,8 +128,8 @@ def run( context ):
         # Get the SketchLines collection from an existing sketch.S
         lines = sketch1.sketchCurves.sketchLines
         # Call an add method on the collection to create a new line.
-        xlength = -xdimneg+xpos+size/2+textsize
-        ylength = -ydimneg+ypos_last+size/2+textsize
+        xlength = -xdimneg+xpos+circlesize/2+separationx
+        ylength = -ydimneg+ypos_last+circlesize/2+separationy
         centerpointx = xlength/2+xdimneg
         centerpointy = ylength/2+ydimneg
         centerpointz = -box_thickness/2
@@ -195,8 +194,8 @@ def run( context ):
                 num_circles+=1
                 ypos_last=ypos
 
-                if stop+separationy > textsize+separationy:
-                    ypos += stop+separationy
+                if stop+(inc+1)*yincrement+yincrement_start+separationy-yincrement*0.5 > textsize+separationy:
+                    ypos += stop+(inc+1)*yincrement+yincrement_start+separationy-yincrement*0.5
                 else:
                     ypos += textsize+separationy
 
@@ -225,6 +224,9 @@ def run( context ):
             xpos += size+separationx
             ypos = textsize+stop/2+separationy
 
+
+        fusion.userInterface.messageBox( str(len(bodies))+" rb:"+str(len(poleCollection)))
+        
         fusion.userInterface.messageBox( str(len(bodies))+" rb:"+str(len(poleCollection)))
         target = bodies.item(0)
         if cutpoles =="hole":
