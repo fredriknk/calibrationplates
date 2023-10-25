@@ -59,29 +59,30 @@ def run( context ):
         mm = 0.1
         ################################
         #x Increments
-        start = 27.*mm
-        stop = 30.*mm
-        xincrement = 1.*mm
+        start = 1.*mm #from size
+        stop = 10.*mm #to size
+        xincrement = 1.*mm #increment in x direction
 
         #Y-increments
-        yincrement_start = 0.0*mm
-        yincrement_stop = 1.*mm
-        yincrement = 0.2*mm
+        yincrement_start = 0.0*mm #increment start
+        yincrement_stop = 1.*mm #increment stop
+        yincrement = 0.1*mm
 
         #Parameters
         cutpoles = "hole"
         #cutpoles = "pole"
         cuttext = True
-        textsize = 7*mm
-        textthickness = 0.5*mm
-        box_thickness = 15*mm
-        separationx = 5*mm
-        separationy = 2*mm
-        maxheight = 10*mm
-        xdimneg = -15*mm
+        textsize = 7*mm #Height text
+        textthickness = 0.5*mm #thickness of text 
+        box_thickness = 5*mm #thickness of shheet
+        separationx = 5*mm #separation in y direction
+        separationy = 2*mm # separation in x direction
+        maxheight = 10*mm #capping of height, otherwise height == circlesize
+        #######################################
+        xdimneg = -15*mm 
         ydimneg = -2*mm
 
-        #######################################
+
 
         xpos = 0
         ypos = 0
